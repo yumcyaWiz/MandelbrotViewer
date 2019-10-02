@@ -1,7 +1,9 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <thread>
 #include <atomic>
+#include <chrono>
 
 #include <GLFW/glfw3.h>
 
@@ -22,6 +24,15 @@ std::atomic<bool> gRefreshRender;
 std::vector<float> gPixelBuffer(3 * gWidth * gHeight);
 
 
+void initRender() {
+  gCenter[0] = 0;
+  gCenter[1] = 0;
+
+  gScale[0] = 1;
+  gScale[1] = 1;
+}
+
+
 void requestRender() {
   gRefreshRender = true;
 }
@@ -30,7 +41,7 @@ void requestRender() {
 void renderMandelbrot(std::vector<float>& pixelBuffer) {
   for(int j = 0; j < gHeight; j++) {
     for(int i = 0; i < gWidth; i++) {
-      Complex_d c(double(i)/gWidth, double(j)/gHeight);
+      Complex_d c(gCenter[0] + gScale[0]*(2.0*i - gWidth)/gWidth, gCenter[1] + gScale[1]*(2.0*j - gHeight)/gHeight);
       Complex_d z(0, 0);
 
       int break_iter = 0;
@@ -46,6 +57,17 @@ void renderMandelbrot(std::vector<float>& pixelBuffer) {
       pixelBuffer[1 + 3*i + gWidth*j] = double(break_iter)/gMaxIterate;
       pixelBuffer[2 + 3*i + gWidth*j] = double(break_iter)/gMaxIterate;
     }
+  }
+}
+
+
+void renderThread() {
+  while(1) {
+    if (gRefreshRender) {
+      renderMandelbrot(gPixelBuffer);
+      gRefreshRender = false;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
 
@@ -74,7 +96,8 @@ int main() {
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL2_Init();
 
-  renderMandelbrot(gPixelBuffer);
+  initRender();
+  std::thread render_thread(renderThread);
 
   //Rendering Loop
   while (!glfwWindowShouldClose(window)) {
@@ -107,6 +130,7 @@ int main() {
 
     glfwSwapBuffers(window);
   }
+  render_thread.join();
 
   ImGui_ImplOpenGL2_Shutdown();
   ImGui_ImplGlfw_Shutdown();
