@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <atomic>
 
 #include <GLFW/glfw3.h>
 
@@ -14,7 +15,16 @@
 int gWidth = 512;
 int gHeight = 512;
 int gMaxIterate = 100;
+std::vector<float> gCenter(2);
+std::vector<float> gScale(2);
+
+std::atomic<bool> gRefreshRender;
 std::vector<float> gPixelBuffer(3 * gWidth * gHeight);
+
+
+void requestRender() {
+  gRefreshRender = true;
+}
 
 
 void renderMandelbrot(std::vector<float>& pixelBuffer) {
@@ -73,6 +83,18 @@ int main() {
     ImGui_ImplOpenGL2_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+
+    ImGui::Begin("UI");
+    bool refresh = false;
+    {
+      refresh |= ImGui::InputFloat2("Center", gCenter.data(), 6);
+      refresh |= ImGui::InputFloat2("Scale", gScale.data(), 6);
+    }
+    ImGui::End();
+
+    if (refresh) {
+      requestRender();
+    }
 
     ImGui::Render();
     glViewport(0, 0, gWidth, gHeight);
