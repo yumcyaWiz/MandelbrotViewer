@@ -14,10 +14,10 @@
 int gWidth = 512;
 int gHeight = 512;
 int gMaxIterate = 100;
-std::vector<uint8_t> gPixelBuffer(3 * gWidth * gHeight);
+std::vector<float> gPixelBuffer(3 * gWidth * gHeight);
 
 
-void renderMandelbrot(std::vector<uint8_t>& pixelBuffer) {
+void renderMandelbrot(std::vector<float>& pixelBuffer) {
   for(int j = 0; j < gHeight; j++) {
     for(int i = 0; i < gWidth; i++) {
       Complex_d c(double(i)/gWidth, double(j)/gHeight);
@@ -32,9 +32,9 @@ void renderMandelbrot(std::vector<uint8_t>& pixelBuffer) {
         }
       }
 
-      pixelBuffer[0 + 3*i + gWidth*j] = std::min(int(double(break_iter)/gMaxIterate * 255), 255);
-      pixelBuffer[1 + 3*i + gWidth*j] = std::min(int(double(break_iter)/gMaxIterate * 255), 255);
-      pixelBuffer[2 + 3*i + gWidth*j] = std::min(int(double(break_iter)/gMaxIterate * 255), 255);
+      pixelBuffer[0 + 3*i + gWidth*j] = double(break_iter)/gMaxIterate;
+      pixelBuffer[1 + 3*i + gWidth*j] = double(break_iter)/gMaxIterate;
+      pixelBuffer[2 + 3*i + gWidth*j] = double(break_iter)/gMaxIterate;
     }
   }
 }
@@ -56,14 +56,6 @@ int main() {
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1);
 
-  //Initialize GLAD
-  /*
-  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-    std::cerr << "failed to initialize glad" << std::endl;
-    return -1;
-  }
-  */
-
   //Initialize ImGui
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
@@ -71,7 +63,6 @@ int main() {
 
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL2_Init();
-  //ImGui_ImplOpenGL3_Init(glsl_version);
 
   renderMandelbrot(gPixelBuffer);
 
@@ -83,17 +74,14 @@ int main() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::Begin("a");
-    ImGui::Text("a");
-    ImGui::End();
-
     ImGui::Render();
-    int display_w, display_h;
-    glfwGetFramebufferSize(window, &display_w, &display_h);
-    glViewport(0, 0, display_w, display_h);
+    glViewport(0, 0, gWidth, gHeight);
     glClear(GL_COLOR_BUFFER_BIT);
+
     ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
-    glDrawPixels(gWidth, gHeight, GL_RGB, GL_UNSIGNED_BYTE, gPixelBuffer.data());
+
+    glRasterPos2i(-1, -1);
+    glDrawPixels(gWidth, gHeight, GL_RGB, GL_FLOAT, static_cast<const GLvoid*>(gPixelBuffer.data()));
 
     glfwSwapBuffers(window);
   }
