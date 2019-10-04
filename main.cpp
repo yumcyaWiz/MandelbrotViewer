@@ -16,7 +16,7 @@
 
 int gWidth;
 int gHeight;
-int gMaxIterate = 100;
+int gMaxIterate;
 std::vector<float> gCenter(2);
 std::vector<float> gScale(2);
 
@@ -27,6 +27,7 @@ std::vector<float> gPixelBuffer;
 void initRender() {
   gWidth = 512;
   gHeight = 512;
+  gMaxIterate = 100;
   gPixelBuffer.resize(3 * gWidth * gHeight);
 
   gCenter[0] = 0;
@@ -43,24 +44,39 @@ void requestRender() {
 
 
 void renderMandelbrot(std::vector<float>& pixelBuffer) {
-  for(int j = 0; j < gHeight; j++) {
-    for(int i = 0; i < gWidth; i++) {
-      Complex_d c(gCenter[0] + gScale[0]*(2.0*i - gWidth)/gWidth, gCenter[1] + gScale[1]*(2.0*j - gHeight)/gHeight);
-      Complex_d z(0, 0);
+  const int num_threads = std::max(1U, std::thread::hardware_concurrency());
+  std::cout << "Rendering threads: " << num_threads << std::endl;
 
-      int break_iter = 0;
-      for(int k = 0; k < gMaxIterate; k++) {
-        z = z*z + c;
-        if (length(z) > 2.0) {
-          break_iter = k;
-          break;
+  std::vector<std::thread> workers;
+  for(int thread_id = 0; thread_id < num_threads; thread_id++) {
+    workers.emplace_back([&, thread_id, num_threads] {
+      const int height_start = double(thread_id)/num_threads * gHeight;
+      const int height_end = double(thread_id + 1)/num_threads * gHeight;
+
+      for(int j = height_start; j < height_end; j++) {
+        for(int i = 0; i < gWidth; i++) {
+          Complex_d c(gCenter[0] + gScale[0]*(2.0*i - gWidth)/gWidth, gCenter[1] + gScale[1]*(2.0*j - gHeight)/gHeight);
+          Complex_d z(0, 0);
+
+          int break_iter = 0;
+          for(int k = 0; k < gMaxIterate; k++) {
+            z = z*z + c;
+            if (length(z) > 2.0) {
+              break_iter = k;
+              break;
+            }
+          }
+
+          pixelBuffer[0 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
+          pixelBuffer[1 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
+          pixelBuffer[2 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
         }
       }
+    });
+  }
 
-      pixelBuffer[0 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
-      pixelBuffer[1 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
-      pixelBuffer[2 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
-    }
+  for(auto& w : workers) {
+    w.join();
   }
 }
 
@@ -68,7 +84,10 @@ void renderMandelbrot(std::vector<float>& pixelBuffer) {
 void renderThread() {
   while(1) {
     if (gRefreshRender) {
+      const auto start_time = std::chrono::system_clock::now();
       renderMandelbrot(gPixelBuffer);
+      std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start_time).count() << " ms" << std::endl;
+
       gRefreshRender = false;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
