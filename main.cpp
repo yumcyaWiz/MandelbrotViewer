@@ -14,17 +14,21 @@
 #include "complex.h"
 
 
-int gWidth = 512;
-int gHeight = 512;
+int gWidth;
+int gHeight;
 int gMaxIterate = 100;
 std::vector<float> gCenter(2);
 std::vector<float> gScale(2);
 
 std::atomic<bool> gRefreshRender;
-std::vector<float> gPixelBuffer(3 * gWidth * gHeight);
+std::vector<float> gPixelBuffer;
 
 
 void initRender() {
+  gWidth = 512;
+  gHeight = 512;
+  gPixelBuffer.resize(3 * gWidth * gHeight);
+
   gCenter[0] = 0;
   gCenter[1] = 0;
 
@@ -53,9 +57,9 @@ void renderMandelbrot(std::vector<float>& pixelBuffer) {
         }
       }
 
-      pixelBuffer[0 + 3*i + gWidth*j] = double(break_iter)/gMaxIterate;
-      pixelBuffer[1 + 3*i + gWidth*j] = double(break_iter)/gMaxIterate;
-      pixelBuffer[2 + 3*i + gWidth*j] = double(break_iter)/gMaxIterate;
+      pixelBuffer[0 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
+      pixelBuffer[1 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
+      pixelBuffer[2 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
     }
   }
 }
@@ -69,6 +73,16 @@ void renderThread() {
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
+}
+
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+  glViewport(0, 0, width, height);
+
+  gWidth = width;
+  gHeight = height;
+  gPixelBuffer.resize(3 * gWidth * gHeight);
+  requestRender();
 }
 
 
@@ -87,6 +101,8 @@ int main() {
   }
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1);
+
+  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
   //Initialize ImGui
   IMGUI_CHECKVERSION();
@@ -119,17 +135,18 @@ int main() {
       requestRender();
     }
 
-    ImGui::Render();
     glViewport(0, 0, gWidth, gHeight);
     glClear(GL_COLOR_BUFFER_BIT);
-
-    ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 
     glRasterPos2i(-1, -1);
     glDrawPixels(gWidth, gHeight, GL_RGB, GL_FLOAT, static_cast<const GLvoid*>(gPixelBuffer.data()));
 
+    ImGui::Render();
+    ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+
     glfwSwapBuffers(window);
   }
+
   render_thread.join();
 
   ImGui_ImplOpenGL2_Shutdown();

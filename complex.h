@@ -1,6 +1,7 @@
 #ifndef COMPLEX_H
 #define COMPLEX_H
 
+#include <iostream>
 #include <cmath>
 
 
@@ -39,6 +40,14 @@ double length(const Complex<T>& c) {
 }
 
 
+template <typename T>
+std::ostream& operator<<(std::ostream& stream, const Complex<T>& c) {
+  stream << "(" << c.real << ", " << c.imag << ")";
+  return stream;
+}
+
+
 using Complex_d = Complex<double>;
 using Complex_f = Complex<float>;
+
 #endif
