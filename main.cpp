@@ -23,6 +23,10 @@ std::vector<float> gScale(2);
 std::atomic<bool> gRefreshRender;
 std::vector<float> gPixelBuffer;
 
+double xpos_prev;
+double ypos_prev;
+constexpr double drag_sensitibity = 0.001;
+
 
 void initRender() {
   gWidth = 512;
@@ -105,6 +109,20 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 }
 
 
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+  const double xdif = xpos - xpos_prev;
+  const double ydif = ypos - ypos_prev;
+  xpos_prev = xpos;
+  ypos_prev = ypos;
+
+  if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+    gCenter[0] += drag_sensitibity*xdif;
+    gCenter[1] += -drag_sensitibity*ydif;
+    requestRender();
+  }
+}
+
+
 int main() {
   //Initialize GLFW
   if (!glfwInit()) {
@@ -122,6 +140,7 @@ int main() {
   glfwSwapInterval(1);
 
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+  glfwSetCursorPosCallback(window, cursor_position_callback);
 
   //Initialize ImGui
   IMGUI_CHECKVERSION();
