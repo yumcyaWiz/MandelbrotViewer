@@ -147,6 +147,7 @@ int main() {
     {
       refresh |= ImGui::InputFloat2("Center", gCenter.data(), 6);
       refresh |= ImGui::InputFloat2("Scale", gScale.data(), 6);
+      refresh |= ImGui::InputInt("Iteration", &gMaxIterate);
     }
     ImGui::End();
 
