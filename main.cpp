@@ -27,6 +27,7 @@ std::vector<float> gPixelBuffer;
 double xpos_prev;
 double ypos_prev;
 constexpr double drag_sensitibity = 0.001;
+constexpr double scroll_sensitivity = 0.01;
 
 
 void initRender() {
@@ -136,6 +137,13 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
 }
 
 
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+  gScale[0] += scroll_sensitivity*yoffset;
+  gScale[1] += scroll_sensitivity*yoffset;
+  requestRender();
+}
+
+
 int main() {
   //Initialize GLFW
   if (!glfwInit()) {
@@ -154,6 +162,7 @@ int main() {
 
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
   glfwSetCursorPosCallback(window, cursor_position_callback);
+  glfwSetScrollCallback(window, scroll_callback);
 
   //Initialize ImGui
   IMGUI_CHECKVERSION();
