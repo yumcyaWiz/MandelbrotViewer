@@ -4,6 +4,7 @@
 #include <thread>
 #include <atomic>
 #include <chrono>
+#include <future>
 
 #include <GLFW/glfw3.h>
 
@@ -12,11 +13,13 @@
 #include "examples/imgui_impl_opengl2.h"
 
 #include "complex.h"
+#include "ext/ThreadPool.h"
 
 
 int gWidth;
 int gHeight;
 int gMaxIterate;
+int gNum_tiles;
 std::vector<float> gCenter(2);
 std::vector<float> gScale(2);
 
@@ -34,6 +37,7 @@ void initRender() {
   gWidth = 512;
   gHeight = 512;
   gMaxIterate = 100;
+  gNum_tiles = 16;
   gPixelBuffer.resize(3 * gWidth * gHeight);
 
   gCenter[0] = 0;
@@ -54,40 +58,47 @@ void requestRender() {
 
 bool renderMandelbrot(std::vector<float>& pixelBuffer) {
   const int num_threads = std::max(1U, std::thread::hardware_concurrency());
-  std::cout << "Rendering threads: " << num_threads << std::endl;
+  //std::cout << "Rendering threads: " << num_threads << std::endl;
 
-  std::vector<std::thread> workers;
-  for(int thread_id = 0; thread_id < num_threads; thread_id++) {
-    workers.emplace_back([&, thread_id, num_threads] {
-      const int height_start = double(thread_id)/num_threads * gHeight;
-      const int height_end = double(thread_id + 1)/num_threads * gHeight;
+  ThreadPool pool(num_threads);
+  std::vector<std::future<void>> results;
 
-      for(int j = height_start; j < height_end; j++) {
-        for(int i = 0; i < gWidth; i++) {
-          if(gCancelRender) return;
+  const int gNum_tiles_sqrt = std::sqrt(gNum_tiles);
+  for(int tile_x = 0; tile_x < gNum_tiles_sqrt; tile_x++) {
+    for(int tile_y = 0; tile_y < gNum_tiles_sqrt; tile_y++) {
+      results.push_back(pool.enqueue([&, tile_x, tile_y] {
+        const int width_s = std::ceil(tile_x/double(gNum_tiles_sqrt) * gWidth);
+        const int width_e = std::floor((tile_x + 1)/double(gNum_tiles_sqrt) * gWidth);
+        const int height_s = std::ceil(tile_y/double(gNum_tiles_sqrt) * gHeight);
+        const int height_e = std::floor((tile_y + 1)/double(gNum_tiles_sqrt) * gHeight);
 
-          Complex_d c(gCenter[0] + gScale[0]*(2.0*i - gWidth)/gWidth, gCenter[1] + gScale[1]*(2.0*j - gHeight)/gHeight);
-          Complex_d z(0, 0);
+        for(int j = height_s; j < height_e; j++) {
+          for(int i = width_s; i < width_e; i++) {
+            if(gCancelRender) return;
 
-          int break_iter = 0;
-          for(int k = 0; k < gMaxIterate; k++) {
-            z = z*z + c;
-            if (length(z) > 2.0) {
-              break_iter = k;
-              break;
+            Complex_d c(gCenter[0] + gScale[0]*(2.0*i - gWidth)/gWidth, gCenter[1] + gScale[1]*(2.0*j - gHeight)/gHeight);
+            Complex_d z(0, 0);
+
+            int break_iter = 0;
+            for(int k = 0; k < gMaxIterate; k++) {
+              z = z*z + c;
+              if (length(z) > 2.0) {
+                break_iter = k;
+                break;
+              }
             }
-          }
 
-          pixelBuffer[0 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
-          pixelBuffer[1 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
-          pixelBuffer[2 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
+            pixelBuffer[0 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
+            pixelBuffer[1 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
+            pixelBuffer[2 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
+          }
         }
-      }
-    });
+      }));
+    }
   }
 
-  for(auto& w : workers) {
-    w.join();
+  for(auto&& result : results) {
+    result.get();
   }
 
   return true;
@@ -104,7 +115,7 @@ void renderThread() {
         gCancelRender = false;
       }
       else {
-        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start_time).count() << " ms" << std::endl;
+        std::cout << "Rendering Finished in " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start_time).count() << " ms" << std::endl;
         gRefreshRender = false;
       }
     }
