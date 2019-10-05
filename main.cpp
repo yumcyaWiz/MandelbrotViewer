@@ -5,6 +5,7 @@
 #include <atomic>
 #include <chrono>
 #include <future>
+#include <algorithm>
 
 #include <GLFW/glfw3.h>
 
@@ -58,6 +59,11 @@ void requestRender() {
 }
 
 
+ImVec4 colormap(double x) {
+  return ImVec4(0.0, std::clamp(x, 0.0, 1.0), std::clamp(-0.5*x + 1.0, 0.0, 1.0), 1.0);
+}
+
+
 bool renderMandelbrot(std::vector<float>& pixelBuffer) {
   const int num_threads = std::max(1U, std::thread::hardware_concurrency());
   //std::cout << "Rendering threads: " << num_threads << std::endl;
@@ -89,9 +95,10 @@ bool renderMandelbrot(std::vector<float>& pixelBuffer) {
               }
             }
 
-            pixelBuffer[0 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
-            pixelBuffer[1 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
-            pixelBuffer[2 + 3*i + 3*gWidth*j] = double(break_iter)/gMaxIterate;
+            double x = (break_iter + 1 - std::log(std::log2(length(z))))/gMaxIterate;
+            pixelBuffer[0 + 3*i + 3*gWidth*j] = std::clamp(1 - x, 0.0, 1.0);
+            pixelBuffer[1 + 3*i + 3*gWidth*j] = std::clamp(1 - x, 0.0, 1.0);
+            pixelBuffer[2 + 3*i + 3*gWidth*j] = std::clamp(1 - x, 0.0, 1.0);
           }
         }
       }));
