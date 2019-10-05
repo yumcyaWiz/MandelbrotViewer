@@ -38,8 +38,8 @@ void initRender() {
   gHeight = 512;
   gMaxIterate = 100;
 
-  gNum_tiles[0] = 4;
-  gNum_tiles[1] = 4;
+  gNum_tiles[0] = 8;
+  gNum_tiles[1] = 8;
   gPixelBuffer.resize(3 * gWidth * gHeight);
 
   gCenter[0] = 0;
@@ -142,16 +142,19 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
   g_ypos_prev = ypos;
 
   if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-    gCenter[0] += g_drag_sensitibity*xdif;
-    gCenter[1] += -g_drag_sensitibity*ydif;
+    gCenter[0] += gScale[0] * g_drag_sensitibity*xdif;
+    gCenter[1] += -gScale[1] * g_drag_sensitibity*ydif;
     requestRender();
   }
 }
 
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-  gScale[0] += g_scroll_sensitivity*yoffset;
-  gScale[1] += g_scroll_sensitivity*yoffset;
+  gScale[0] += gScale[0] * g_scroll_sensitivity*yoffset;
+  gScale[1] += gScale[1] * g_scroll_sensitivity*yoffset;
+  if(gScale[0] < 0) gScale[0] = 0;
+  if(gScale[1] < 0) gScale[1] = 0;
+
   requestRender();
 }
 
