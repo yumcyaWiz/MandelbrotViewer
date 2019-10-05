@@ -20,6 +20,7 @@ int gMaxIterate;
 std::vector<float> gCenter(2);
 std::vector<float> gScale(2);
 
+std::atomic<bool> gCancelRender;
 std::atomic<bool> gRefreshRender;
 std::vector<float> gPixelBuffer;
 
@@ -43,11 +44,14 @@ void initRender() {
 
 
 void requestRender() {
+  if (gRefreshRender) {
+    gCancelRender = true;
+  }
   gRefreshRender = true;
 }
 
 
-void renderMandelbrot(std::vector<float>& pixelBuffer) {
+bool renderMandelbrot(std::vector<float>& pixelBuffer) {
   const int num_threads = std::max(1U, std::thread::hardware_concurrency());
   std::cout << "Rendering threads: " << num_threads << std::endl;
 
@@ -59,6 +63,8 @@ void renderMandelbrot(std::vector<float>& pixelBuffer) {
 
       for(int j = height_start; j < height_end; j++) {
         for(int i = 0; i < gWidth; i++) {
+          if(gCancelRender) return;
+
           Complex_d c(gCenter[0] + gScale[0]*(2.0*i - gWidth)/gWidth, gCenter[1] + gScale[1]*(2.0*j - gHeight)/gHeight);
           Complex_d z(0, 0);
 
@@ -82,6 +88,8 @@ void renderMandelbrot(std::vector<float>& pixelBuffer) {
   for(auto& w : workers) {
     w.join();
   }
+
+  return true;
 }
 
 
@@ -90,9 +98,14 @@ void renderThread() {
     if (gRefreshRender) {
       const auto start_time = std::chrono::system_clock::now();
       renderMandelbrot(gPixelBuffer);
-      std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start_time).count() << " ms" << std::endl;
 
-      gRefreshRender = false;
+      if(gCancelRender) {
+        gCancelRender = false;
+      }
+      else {
+        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start_time).count() << " ms" << std::endl;
+        gRefreshRender = false;
+      }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
