@@ -19,12 +19,12 @@
 int gWidth;
 int gHeight;
 int gMaxIterate;
-int gNum_tiles;
 std::vector<float> gCenter(2);
 std::vector<float> gScale(2);
 
 std::atomic<bool> gCancelRender;
 std::atomic<bool> gRefreshRender;
+std::vector<int> gNum_tiles(2);
 std::vector<float> gPixelBuffer;
 
 double g_xpos_prev;
@@ -37,7 +37,9 @@ void initRender() {
   gWidth = 512;
   gHeight = 512;
   gMaxIterate = 100;
-  gNum_tiles = 16;
+
+  gNum_tiles[0] = 4;
+  gNum_tiles[1] = 4;
   gPixelBuffer.resize(3 * gWidth * gHeight);
 
   gCenter[0] = 0;
@@ -63,14 +65,13 @@ bool renderMandelbrot(std::vector<float>& pixelBuffer) {
   ThreadPool pool(num_threads);
   std::vector<std::future<void>> results;
 
-  const int gNum_tiles_sqrt = std::sqrt(gNum_tiles);
-  for(int tile_x = 0; tile_x < gNum_tiles_sqrt; tile_x++) {
-    for(int tile_y = 0; tile_y < gNum_tiles_sqrt; tile_y++) {
+  for(int tile_x = 0; tile_x < gNum_tiles[0]; tile_x++) {
+    for(int tile_y = 0; tile_y < gNum_tiles[1]; tile_y++) {
       results.push_back(pool.enqueue([&, tile_x, tile_y] {
-        const int width_s = std::ceil(tile_x/double(gNum_tiles_sqrt) * gWidth);
-        const int width_e = std::floor((tile_x + 1)/double(gNum_tiles_sqrt) * gWidth);
-        const int height_s = std::ceil(tile_y/double(gNum_tiles_sqrt) * gHeight);
-        const int height_e = std::floor((tile_y + 1)/double(gNum_tiles_sqrt) * gHeight);
+        const int width_s = tile_x/double(gNum_tiles[0]) * gWidth;
+        const int width_e = (tile_x + 1)/double(gNum_tiles[0]) * gWidth;
+        const int height_s = tile_y/double(gNum_tiles[1]) * gHeight;
+        const int height_e = (tile_y + 1)/double(gNum_tiles[1]) * gHeight;
 
         for(int j = height_s; j < height_e; j++) {
           for(int i = width_s; i < width_e; i++) {
@@ -160,9 +161,6 @@ int main() {
   if (!glfwInit()) {
     return -1;
   }
-  const char* glsl_version = "#version 130";
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
   GLFWwindow* window = glfwCreateWindow(512, 512, "Dear ImGui", NULL, NULL);
   if (window == NULL) {
@@ -197,6 +195,7 @@ int main() {
     ImGui::Begin("UI");
     bool refresh = false;
     {
+      refresh |= ImGui::InputInt2("Render Tiles", gNum_tiles.data());
       refresh |= ImGui::InputFloat2("Center", gCenter.data(), 6);
       refresh |= ImGui::InputFloat2("Scale", gScale.data(), 6);
       refresh |= ImGui::InputInt("Iteration", &gMaxIterate);
