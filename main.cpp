@@ -27,10 +27,10 @@ std::atomic<bool> gCancelRender;
 std::atomic<bool> gRefreshRender;
 std::vector<float> gPixelBuffer;
 
-double xpos_prev;
-double ypos_prev;
-constexpr double drag_sensitibity = 0.001;
-constexpr double scroll_sensitivity = 0.01;
+double g_xpos_prev;
+double g_ypos_prev;
+constexpr double g_drag_sensitibity = 0.001;
+constexpr double g_scroll_sensitivity = 0.01;
 
 
 void initRender() {
@@ -135,22 +135,22 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 
 
 void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
-  const double xdif = xpos - xpos_prev;
-  const double ydif = ypos - ypos_prev;
-  xpos_prev = xpos;
-  ypos_prev = ypos;
+  const double xdif = xpos - g_xpos_prev;
+  const double ydif = ypos - g_ypos_prev;
+  g_xpos_prev = xpos;
+  g_ypos_prev = ypos;
 
   if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-    gCenter[0] += drag_sensitibity*xdif;
-    gCenter[1] += -drag_sensitibity*ydif;
+    gCenter[0] += g_drag_sensitibity*xdif;
+    gCenter[1] += -g_drag_sensitibity*ydif;
     requestRender();
   }
 }
 
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-  gScale[0] += scroll_sensitivity*yoffset;
-  gScale[1] += scroll_sensitivity*yoffset;
+  gScale[0] += g_scroll_sensitivity*yoffset;
+  gScale[1] += g_scroll_sensitivity*yoffset;
   requestRender();
 }
 
